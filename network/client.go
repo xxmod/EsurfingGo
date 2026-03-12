@@ -139,6 +139,16 @@ func Post(client *http.Client, url, data string, state StateProvider, extraHeade
 	req.Header.Set("Client-ID", state.GetClientID())
 	req.Header.Set("Algo-ID", state.GetAlgoID())
 
+	if v := state.GetSchoolID(); v != "" {
+		req.Header.Set("CDC-SchoolId", v)
+	}
+	if v := state.GetDomain(); v != "" {
+		req.Header.Set("CDC-Domain", v)
+	}
+	if v := state.GetArea(); v != "" {
+		req.Header.Set("CDC-Area", v)
+	}
+
 	for k, v := range extraHeaders {
 		req.Header.Set(k, v)
 	}
@@ -179,6 +189,16 @@ func PostRaw(client *http.Client, url, data string, state StateProvider) ([]byte
 	req.Header.Set("CDC-Checksum", hex.EncodeToString(hash[:]))
 	req.Header.Set("Client-ID", state.GetClientID())
 	req.Header.Set("Algo-ID", state.GetAlgoID())
+
+	if v := state.GetSchoolID(); v != "" {
+		req.Header.Set("CDC-SchoolId", v)
+	}
+	if v := state.GetDomain(); v != "" {
+		req.Header.Set("CDC-Domain", v)
+	}
+	if v := state.GetArea(); v != "" {
+		req.Header.Set("CDC-Area", v)
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {
