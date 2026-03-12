@@ -36,6 +36,24 @@ jobs:
             goarch: amd64
           - goos: linux
             goarch: arm64
+          - goos: linux
+            goarch: arm
+            goarm: "5"
+            label: armv5
+          - goos: linux
+            goarch: arm
+            goarm: "6"
+            label: armv6
+          - goos: linux
+            goarch: arm
+            goarm: "7"
+            label: armv7
+          - goos: linux
+            goarch: mips
+            gomips: softfloat
+          - goos: linux
+            goarch: mipsle
+            gomips: softfloat
           - goos: windows
             goarch: amd64
           - goos: darwin
@@ -53,10 +71,14 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
+          GOMIPS: ${{ matrix.gomips }}
         run: |
+          label="$GOOS-$GOARCH"
+          if [ -n "$GOARM" ]; then label="$GOOS-armv$GOARM"; fi
           ext=""
           if [ "$GOOS" = "windows" ]; then ext=".exe"; fi
-          go build -trimpath -ldflags="-s -w" -o dist/esurfing-${GOOS}-${GOARCH}${ext} .
+          go build -trimpath -ldflags="-s -w" -o "dist/esurfing-${label}${ext}" .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -78,5 +100,5 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/*
+          files: artifacts/esurfing-*
           generate_release_notes: true
