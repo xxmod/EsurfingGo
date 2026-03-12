@@ -33,3 +33,5 @@ Thumbs.db
 *.jar
 decompiled/
 extracted/
+
+.github/copilot-instructions.md

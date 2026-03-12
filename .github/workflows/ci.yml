@@ -30,36 +30,44 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         include:
           - goos: linux
             goarch: amd64
+            label: linux-amd64
           - goos: linux
             goarch: arm64
+            label: linux-arm64
           - goos: linux
             goarch: arm
             goarm: "5"
-            label: armv5
+            label: linux-armv5
           - goos: linux
             goarch: arm
             goarm: "6"
-            label: armv6
+            label: linux-armv6
           - goos: linux
             goarch: arm
             goarm: "7"
-            label: armv7
+            label: linux-armv7
           - goos: linux
             goarch: mips
             gomips: softfloat
+            label: linux-mips
           - goos: linux
             goarch: mipsle
             gomips: softfloat
+            label: linux-mipsle
           - goos: windows
             goarch: amd64
+            label: windows-amd64
           - goos: darwin
             goarch: amd64
+            label: darwin-amd64
           - goos: darwin
             goarch: arm64
+            label: darwin-arm64
     steps:
       - uses: actions/checkout@v4
 
@@ -74,16 +82,14 @@ jobs:
           GOARM: ${{ matrix.goarm }}
           GOMIPS: ${{ matrix.gomips }}
         run: |
-          label="$GOOS-$GOARCH"
-          if [ -n "$GOARM" ]; then label="$GOOS-armv$GOARM"; fi
           ext=""
           if [ "$GOOS" = "windows" ]; then ext=".exe"; fi
-          go build -trimpath -ldflags="-s -w" -o "dist/esurfing-${label}${ext}" .
+          go build -trimpath -ldflags="-s -w" -o "dist/esurfing-${{ matrix.label }}${ext}" .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: esurfing-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: esurfing-${{ matrix.label }}
           path: dist/
 
   release:
