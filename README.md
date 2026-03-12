@@ -10,11 +10,92 @@
 - 支持短信验证码登录
 - 跨平台编译（Windows / Linux / macOS）
 
-## 构建
+## 🛠️ 构建方法
+
+### 1. 基础构建（推荐）
 
 ```bash
 go build -o esurfing .
 ```
+
+生成的 `esurfing.exe`（Windows）或 `esurfing`（Linux/macOS）即为可执行文件。
+
+### 2. 跨平台编译脚本
+
+项目提供自动化构建脚本，支持多平台打包：
+
+- **Windows (PowerShell)**:
+
+  ```powershell
+  .\build.ps1
+  ```
+- **Linux / macOS (Bash)**:
+
+  ```bash
+  chmod +x build.sh
+  ./build.sh
+  ```
+
+> 📌 参考 `EsurfingDialer` 项目的构建逻辑，脚本会自动设置 `CGO_ENABLED=0` 以确保静态链接，避免运行时依赖。
+
+### 3. 旧设备兼容构建（如 R7000 路由器）
+
+针对 ARMv5 架构设备，需指定环境变量：
+
+```bash
+GOARM=5 CGO_ENABLED=0 GOOS=linux GOARCH=arm go build -o esurfing-arm5 .
+```
+
+## 🚀 部署方法
+
+### 1. 直接运行（开发/测试）
+
+```bash
+./esurfing
+```
+
+程序将自动检测强制门户、获取配置并完成认证流程。
+
+### 2. 后台服务部署（Linux Systemd）
+
+创建服务文件 `/etc/systemd/system/esurfing.service`：
+
+````ini
+[Unit]
+Description=EsuringGo Campus Network Authenticator
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/path/to/esurfing
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target
+````
+
+启用服务：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable esurfing
+sudo systemctl start esurfing
+```
+
+### 3. 路由器部署（OpenWrt / DD-WRT）
+
+将编译好的二进制文件上传至路由器 `/usr/bin/`，并添加开机启动脚本：
+
+```bash
+# 添加执行权限
+chmod +x /usr/bin/esurfing
+
+# 添加到 rc.local 或 init.d
+echo "/usr/bin/esurfing &" >> /etc/rc.local
+```
+
+> ✅ 请参考 `EsurfingDialer` 的嵌入式部署方案，确保关闭调试日志以节省资源。
 
 ## 使用
 
@@ -24,11 +105,11 @@ esurfing -u <手机号> -p <密码> [-s <短信验证码>]
 
 ### 参数
 
-| 参数 | 说明 |
-|------|------|
-| `-u` / `-user` | 登录用户名（手机号） |
-| `-p` / `-password` | 登录密码 |
-| `-s` / `-sms` | 预填短信验证码（可选） |
+| 参数                   | 说明                   |
+| ---------------------- | ---------------------- |
+| `-u` / `-user`     | 登录用户名（手机号）   |
+| `-p` / `-password` | 登录密码               |
+| `-s` / `-sms`      | 预填短信验证码（可选） |
 
 ### 示例
 
@@ -42,11 +123,15 @@ esurfing -u 13800138000 -p mypassword -s 123456
 
 程序启动后会自动检测网络状态，完成认证并保持连接。按 `Ctrl+C` 安全退出。
 
-## 测试
+## 🧪 测试验证
+
+构建后建议运行完整测试套件：
 
 ```bash
 go test ./... -v
 ```
+
+特别关注 `cipher/` 模块的加解密一致性测试，确保协议兼容性。
 
 ## 项目结构
 
@@ -85,3 +170,7 @@ go test ./... -v
 ## 许可证
 
 MIT
+
+---
+
+> 项目结构与协议解析逻辑继承自 `EsurfingDialer`，但采用更清晰的状态机与工厂模式重构，便于维护与扩展。
