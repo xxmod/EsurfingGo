@@ -27,6 +27,7 @@ Thumbs.db
 
 # Build output
 /dist/
+/bin/
 
 # Decompilation artifacts
 *.jar
