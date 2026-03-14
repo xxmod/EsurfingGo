@@ -1,14 +1,42 @@
 # EsuringGo
 
-中国电信天翼校园网（ESurfing）自动认证拨号客户端的 Go 语言实现。
+> 中国电信天翼校园网（ESurfing）自动认证拨号客户端的 Go 语言实现。
 
 ## 功能
 
 - 自动检测强制门户（Captive Portal）并完成认证
-- 支持 9 种加密算法（AES-CBC/ECB、3DES-CBC/ECB、SM4-CBC/ECB、ModXTEA、ModXTEA-XTEAIV、ZUC-128）
 - 自动心跳保活，断线自动重连
-- 支持短信验证码登录
 - 跨平台编译（Windows / Linux / macOS）
+- Go编译后为单文件且无须依赖，便于路由器部署
+- **本项目同时有安卓手机端版本[EsurfingGo-Android](https://github.com/xxmod/EsurfingGo-Android)**
+
+## 使用
+
+[Release](https://github.com/xxmod/EsuringGo/releases/latest)中有最新版本下载，可以直接下载使用
+
+```bash
+esurfing -u <用户名> -p <密码> [-s <短信验证码>]
+```
+
+### 参数
+
+| 参数                   | 说明                   |
+| ---------------------- | ---------------------- |
+| `-u` / `-user`     | 登录用户名             |
+| `-p` / `-password` | 登录密码               |
+| `-s` / `-sms`      | 预填短信验证码（可选） |
+
+### 示例
+
+```bash
+# 基本登录
+esurfing -u 13800138000 -p mypassword
+
+# 携带短信验证码
+esurfing -u 13800138000 -p mypassword -s 123456
+```
+
+程序启动后会自动检测网络状态，完成认证并保持连接。按 `Ctrl+C` 安全退出。
 
 ## 🛠️ 构建方法
 
@@ -38,7 +66,7 @@ go build -o esurfing .
 
 > 📌 参考 `EsurfingDialer` 项目的构建逻辑，脚本会自动设置 `CGO_ENABLED=0` 以确保静态链接，避免运行时依赖。
 
-### 3. 旧设备兼容构建（如 R7000 路由器）
+### 3. 旧设备兼容构建
 
 针对 ARMv5 架构设备，需指定环境变量：
 
@@ -48,13 +76,11 @@ GOARM=5 CGO_ENABLED=0 GOOS=linux GOARCH=arm go build -o esurfing-arm5 .
 
 ## 🚀 部署方法
 
-### 1. 直接运行（开发/测试）
+### 1. 直接运行
 
 ```bash
-./esurfing
+./esurfing -u <用户名> -p <密码>
 ```
-
-程序将自动检测强制门户、获取配置并完成认证流程。
 
 ### 2. 后台服务部署（Linux Systemd）
 
@@ -95,33 +121,40 @@ chmod +x /usr/bin/esurfing
 echo "/usr/bin/esurfing &" >> /etc/rc.local
 ```
 
-> ✅ 请参考 `EsurfingDialer` 的嵌入式部署方案，确保关闭调试日志以节省资源。
-
-## 使用
+#若为梅林固件，可以在/jffs/scripts/添加services-start
 
 ```bash
-esurfing -u <手机号> -p <密码> [-s <短信验证码>]
+#!/bin/sh
+
+i=0
+while [ $i -le 30 ]; do
+    success_start_service=$(nvram get success_start_service)
+    if [ "$success_start_service" == "1" ]; then
+        break
+    fi
+    i=$(($i+1))
+    sleep 1
+done
+
+logger -t "CustomScript" "My services-start script executed successfully."
+
+sleep 5
+
+<外部存储位置>/start.sh > /tmp/home/root/Esurfinglog.txt 2>&1 & 
+//上文start.sh为与esurfing相同的目录，内容为启动命令，如./esurfing-linux-armv5 -u 123123 -p 212121
+
+exit 0
+
 ```
 
-### 参数
-
-| 参数                   | 说明                   |
-| ---------------------- | ---------------------- |
-| `-u` / `-user`     | 登录用户名（手机号）   |
-| `-p` / `-password` | 登录密码               |
-| `-s` / `-sms`      | 预填短信验证码（可选） |
-
-### 示例
+start.sh可参考我的写法
 
 ```bash
-# 基本登录
-esurfing -u 13800138000 -p mypassword
-
-# 携带短信验证码
-esurfing -u 13800138000 -p mypassword -s 123456
+#!/bin/sh
+while true;do
+    <绝对路径>/esurfing-linux-arm5 -u 123321 -p 212121
+done
 ```
-
-程序启动后会自动检测网络状态，完成认证并保持连接。按 `Ctrl+C` 安全退出。
 
 ## 🧪 测试验证
 
@@ -173,4 +206,4 @@ MIT
 
 ---
 
-> 项目结构与协议解析逻辑继承自 `EsurfingDialer`，但采用更清晰的状态机与工厂模式重构，便于维护与扩展。
+> 项目结构与协议解析逻辑继承自 `EsurfingDialer`，但采用更清晰的状态机与工厂模式重构，便于维护与扩展。如果喜欢这个项目，请帮忙点个star
