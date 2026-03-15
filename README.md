@@ -1,6 +1,6 @@
-# EsuringGo
+# EsurfingGo
 
-> 中国电信天翼校园网（ESurfing）自动认证拨号客户端的 Go 语言实现。
+> 中国电信天翼校园网（ESurfing）自动认证拨号客户端的 Go 语言实现。由于我无法测试各个学校的情况，出现问题时，欢迎提交issue并贴上日志。
 
 ## 功能
 
@@ -12,7 +12,7 @@
 
 ## 使用
 
-[Release](https://github.com/xxmod/EsuringGo/releases/latest)中有最新版本下载，可以直接下载使用
+[Release](https://github.com/xxmod/EsurfingGo/releases/latest)中有最新版本下载，可以直接下载使用
 
 ```bash
 esurfing -u <用户名> -p <密码> [-s <短信验证码>]
