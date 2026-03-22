@@ -38,6 +38,93 @@ esurfing -u 13800138000 -p mypassword -s 123456
 
 程序启动后会自动检测网络状态，完成认证并保持连接。按 `Ctrl+C` 安全退出。
 
+## 🚀 部署方法
+
+### 1. 直接运行
+
+```bash
+./esurfing -u <用户名> -p <密码>
+```
+
+在进行后面的部署之前请先运行一次确保程序在你当前的网络环境可用，如不可用，可以贴上日志发issue
+
+### 2. 后台服务部署（Linux Systemd）
+
+创建服务文件 `/etc/systemd/system/esurfing.service`：
+
+````ini
+[Unit]
+Description=EsuringGo Campus Network Authenticator
+After=network.target
+
+[Service]
+Type=simple
+ExecStart= #应用路径
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target
+````
+
+启用服务：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable esurfing #开机自启
+sudo systemctl start esurfing #启动程序
+sudo systemctl status esurfing #查看状态
+```
+
+### 3. 路由器部署（OpenWrt / DD-WRT）
+
+将编译好的二进制文件上传至路由器 `/usr/bin/`，并添加开机启动脚本：
+
+```bash
+# 添加执行权限
+chmod +x /usr/bin/esurfing #此处的esurfing根据你release或者编译的名字更改
+
+# 编辑rc.local配置自启动
+nano /etc/rc.local
+#最后一行添加 /usr/bin/esurfing -u <用户名> -p <密码>
+#ctrl+o保存 ctrl+x关闭编辑器
+```
+
+若为梅林固件，可以在/jffs/scripts/添加services-start
+
+```bash
+#!/bin/sh
+#此脚本为梅林专用
+i=0
+while [ $i -le 30 ]; do
+    success_start_service=$(nvram get success_start_service)
+    if [ "$success_start_service" == "1" ]; then
+        break
+    fi
+    i=$(($i+1))
+    sleep 1
+done
+
+logger -t "CustomScript" "My services-start script executed successfully."
+
+sleep 5
+
+<外部存储位置>/start.sh > /tmp/home/root/Esurfinglog.txt 2>&1 & 
+#上文start.sh为与esurfing相同的目录，内容为启动命令，如./esurfing-linux-armv5 -u 123123 -p 212121
+
+exit 0
+
+```
+
+start.sh可参考我的写法
+
+```bash
+#!/bin/sh
+while true;do
+    <绝对路径>/esurfing-linux-arm5 -u 123321 -p 212121
+done
+```
+
 ## 🛠️ 构建方法
 
 ### 1. 基础构建（推荐）
@@ -72,88 +159,6 @@ go build -o esurfing .
 
 ```bash
 GOARM=5 CGO_ENABLED=0 GOOS=linux GOARCH=arm go build -o esurfing-arm5 .
-```
-
-## 🚀 部署方法
-
-### 1. 直接运行
-
-```bash
-./esurfing -u <用户名> -p <密码>
-```
-
-### 2. 后台服务部署（Linux Systemd）
-
-创建服务文件 `/etc/systemd/system/esurfing.service`：
-
-````ini
-[Unit]
-Description=EsuringGo Campus Network Authenticator
-After=network.target
-
-[Service]
-Type=simple
-ExecStart=/path/to/esurfing
-Restart=always
-User=root
-
-[Install]
-WantedBy=multi-user.target
-````
-
-启用服务：
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable esurfing
-sudo systemctl start esurfing
-```
-
-### 3. 路由器部署（OpenWrt / DD-WRT）
-
-将编译好的二进制文件上传至路由器 `/usr/bin/`，并添加开机启动脚本：
-
-```bash
-# 添加执行权限
-chmod +x /usr/bin/esurfing
-
-# 添加到 rc.local 或 init.d
-echo "/usr/bin/esurfing &" >> /etc/rc.local
-```
-
-#若为梅林固件，可以在/jffs/scripts/添加services-start
-
-```bash
-#!/bin/sh
-
-i=0
-while [ $i -le 30 ]; do
-    success_start_service=$(nvram get success_start_service)
-    if [ "$success_start_service" == "1" ]; then
-        break
-    fi
-    i=$(($i+1))
-    sleep 1
-done
-
-logger -t "CustomScript" "My services-start script executed successfully."
-
-sleep 5
-
-<外部存储位置>/start.sh > /tmp/home/root/Esurfinglog.txt 2>&1 & 
-//上文start.sh为与esurfing相同的目录，内容为启动命令，如./esurfing-linux-armv5 -u 123123 -p 212121
-
-exit 0
-
-```
-
-start.sh可参考我的写法
-
-```bash
-#!/bin/sh
-while true;do
-    <绝对路径>/esurfing-linux-arm5 -u 123321 -p 212121
-done
 ```
 
 ## 🧪 测试验证
@@ -206,4 +211,4 @@ MIT
 
 ---
 
-> 项目结构与协议解析逻辑继承自 `EsurfingDialer`，但采用更清晰的状态机与工厂模式重构，便于维护与扩展。如果喜欢这个项目，请帮忙点个star
+> 项目结构与协议解析逻辑继承自  `Rsplwe/EsurfingDialer`，但采用更清晰的状态机与工厂模式重构，便于维护与扩展。如果喜欢这个项目，请帮忙点个star
