@@ -48,21 +48,20 @@ type ConfigResult struct {
 // DetectConfig performs captive portal detection and parses configuration.
 // verbose controls whether detailed diagnostic logs are printed (set true on status changes).
 func DetectConfig(state StateProvider, verbose bool) ConfigResult {
+	return DetectConfigWithClient(nil, state, verbose)
+}
+
+// DetectConfigWithClient performs captive portal detection and parses configuration.
+// If httpClient is nil, a default client will be created.
+func DetectConfigWithClient(httpClient *http.Client, state StateProvider, verbose bool) ConfigResult {
 	if verbose {
 		log.Printf("[DetectConfig] Starting captive portal detection, URL: %s", captiveURL)
 		log.Printf("[DetectConfig] Client-ID: %s", state.GetClientID())
 	}
 
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-		Transport: &redirectInterceptor{
-			inner:    http.DefaultTransport,
-			state:    state,
-			maxRedir: 5,
-		},
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
+	client := httpClient
+	if client == nil {
+		client = NewHTTPClient(state)
 	}
 
 	// Fetch the initial URL, then follow JS redirects if needed

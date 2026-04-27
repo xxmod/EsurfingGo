@@ -56,7 +56,7 @@ func NewClient(opts Options, states *States, session *Session) *Client {
 // Run starts the main client loop.
 func (c *Client) Run() {
 	for c.states.IsRunning() {
-		status := network.DetectConfig(c.states, c.statusChanged)
+		status := network.DetectConfigWithClient(c.httpClient, c.states, c.statusChanged)
 		c.statusChanged = status.Status != c.lastStatus
 		c.lastStatus = status.Status
 

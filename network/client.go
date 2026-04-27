@@ -1,12 +1,14 @@
 package network
 
 import (
+	"bytes"
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"net/http/cookiejar"
 	"strings"
 	"time"
 )
@@ -70,13 +72,32 @@ func (r *redirectInterceptor) RoundTrip(req *http.Request) (*http.Response, erro
 			break
 		}
 
+		nextURL, err := req.URL.Parse(location)
+		if err != nil {
+			resp.Body.Close()
+			return nil, err
+		}
+
 		// Close old response body
 		resp.Body.Close()
 
-		newReq, err := http.NewRequest(req.Method, location, req.Body)
+		var newBody io.ReadCloser
+		if req.Body != nil {
+			newBody, err = cloneRequestBody(req)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		newReq, err := http.NewRequestWithContext(req.Context(), req.Method, nextURL.String(), newBody)
 		if err != nil {
+			if newBody != nil {
+				newBody.Close()
+			}
 			return nil, err
 		}
+		newReq.GetBody = req.GetBody
+		newReq.ContentLength = req.ContentLength
 		// Copy headers
 		for k, v := range req.Header {
 			newReq.Header[k] = v
@@ -101,6 +122,28 @@ func (r *redirectInterceptor) RoundTrip(req *http.Request) (*http.Response, erro
 	return resp, nil
 }
 
+// cloneRequestBody creates a fresh body reader for redirected requests.
+func cloneRequestBody(req *http.Request) (io.ReadCloser, error) {
+	if req.Body == nil {
+		return nil, nil
+	}
+	if req.GetBody != nil {
+		return req.GetBody()
+	}
+
+	buf, err := io.ReadAll(req.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Body = io.NopCloser(bytes.NewReader(buf))
+	req.GetBody = func() (io.ReadCloser, error) {
+		return io.NopCloser(bytes.NewReader(buf)), nil
+	}
+	req.ContentLength = int64(len(buf))
+	return req.GetBody()
+}
+
 func isRedirect(code int) bool {
 	return code == 301 || code == 302 || code == 303 || code == 307 || code == 308
 }
@@ -112,9 +155,14 @@ func NewHTTPClient(state StateProvider) *http.Client {
 		state:    state,
 		maxRedir: 5,
 	}
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		log.Printf("[HTTPClient] Failed to create cookie jar: %v", err)
+	}
 	return &http.Client{
 		Transport: transport,
 		Timeout:   10 * time.Second,
+		Jar:       jar,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
@@ -164,6 +212,13 @@ func Post(client *http.Client, url, data string, state StateProvider, extraHeade
 	if err != nil {
 		log.Printf("[Post] Failed to read body from %s: %v", url, err)
 		return "", fmt.Errorf("read body: %w", err)
+	}
+	if len(body) == 0 {
+		finalURL := ""
+		if resp.Request != nil && resp.Request.URL != nil {
+			finalURL = resp.Request.URL.String()
+		}
+		log.Printf("[Post] Empty response body from %s (status=%d, finalURL=%s)", url, resp.StatusCode, finalURL)
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -215,6 +270,13 @@ func PostRaw(client *http.Client, url, data string, state StateProvider) ([]byte
 	if err != nil {
 		log.Printf("[PostRaw] Failed to read body from %s: %v", url, err)
 		return nil, fmt.Errorf("read body: %w", err)
+	}
+	if len(body) == 0 {
+		finalURL := ""
+		if resp.Request != nil && resp.Request.URL != nil {
+			finalURL = resp.Request.URL.String()
+		}
+		log.Printf("[PostRaw] Empty response body from %s (status=%d, finalURL=%s)", url, resp.StatusCode, finalURL)
 	}
 
 	return body, nil
